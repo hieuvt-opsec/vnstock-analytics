@@ -1,6 +1,6 @@
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '' || window.location.protocol === 'file:'
-    ? 'http://127.0.0.1:8000' 
-    : 'https://vietnam-stock-analysis-api.onrender.com'; // Fallback production URL placeholder
+    ? 'https://vnstock-analytics.onrender.com'
+    : 'https://vnstock-analytics.onrender.com'; // Fallback production URL placeholder
 
 console.log("DEBUG: window.location.hostname = '" + window.location.hostname + "'");
 console.log("DEBUG: window.location.protocol = '" + window.location.protocol + "'");
@@ -32,7 +32,7 @@ const chatInputEl = document.getElementById('chat-input');
 window.addEventListener('DOMContentLoaded', () => {
     // Initialize empty chart structure
     initChart();
-    
+
     // Check API Status and Load Data
     checkApiStatus().then(() => {
         loadMarketOverview();
@@ -40,7 +40,7 @@ window.addEventListener('DOMContentLoaded', () => {
         loadMarketNews();
         loadScreenerData();
     });
-    
+
     // Periodically ping backend
     setInterval(checkApiStatus, 15000);
 });
@@ -52,20 +52,20 @@ function switchTab(tabId) {
         el.classList.add('hidden');
         el.classList.remove('block');
     });
-    
+
     // Show selected tab content
     const selectedContent = document.getElementById(`content-${tabId}`);
     if (selectedContent) {
         selectedContent.classList.remove('hidden');
         selectedContent.classList.add('block');
     }
-    
+
     // Update active tab styles
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     document.getElementById(`tab-${tabId}`).classList.add('active');
-    
+
     // Redraw chart when switching back to dashboard to prevent sizing bugs
     if (tabId === 'dashboard' && chartInstance) {
         setTimeout(() => {
@@ -81,10 +81,10 @@ function switchTab(tabId) {
 // Helper for fetch with timeout
 async function fetchWithTimeout(resource, options = {}) {
     const { timeout = 15000 } = options;
-    
+
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
-    
+
     try {
         const response = await fetch(resource, {
             ...options,
@@ -124,10 +124,10 @@ async function checkApiStatus() {
 function initChart() {
     const container = document.getElementById('chart-container');
     if (!container) return;
-    
+
     // Clear any leftover divs inside
     container.innerHTML = '';
-    
+
     if (typeof LightweightCharts === 'undefined') {
         container.innerHTML = `
             <div class="absolute inset-0 bg-darkcard flex flex-col items-center justify-center p-4 text-center">
@@ -139,7 +139,7 @@ function initChart() {
         console.warn("TradingView Lightweight Charts is not defined. Running in chart-less mode.");
         return;
     }
-    
+
     // Create Chart Instance
     chartInstance = LightweightCharts.createChart(container, {
         height: 420,
@@ -229,13 +229,13 @@ async function loadMarketOverview() {
             // Mock market overview
             data = getMockMarketOverview();
         }
-        
+
         // Update Indexes
         data.indexes.forEach(idx => {
             const isPositive = idx.change >= 0;
             const colorClass = isPositive ? 'text-accentgreen' : 'text-accentred';
             const iconClass = isPositive ? 'fa-trend-up' : 'fa-trend-down';
-            
+
             if (idx.name === 'VNINDEX') {
                 document.getElementById('idx-vnindex-val').innerHTML = formatNumber(idx.value);
                 document.getElementById('idx-vnindex-val').className = `text-2xl font-bold mt-1 ${colorClass}`;
@@ -259,40 +259,40 @@ async function loadMarketOverview() {
                 document.getElementById('idx-hnx-val').parentElement.nextElementSibling.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
             }
         });
-        
+
         // Update Liquidity
         document.getElementById('market-liquidity').innerHTML = `${formatNumber(data.liquidity)} tỷ VND`;
-        
+
         // Update Market Breadth
         const rising = data.market_breadth.rising || 0;
         const flat = data.market_breadth.flat || 0;
         const falling = data.market_breadth.falling || 0;
         const totalBreadth = rising + flat + falling;
-        
+
         const risingPct = totalBreadth > 0 ? ((rising / totalBreadth) * 100).toFixed(1) : 0;
         const flatPct = totalBreadth > 0 ? ((flat / totalBreadth) * 100).toFixed(1) : 0;
         const fallingPct = totalBreadth > 0 ? ((falling / totalBreadth) * 100).toFixed(1) : 0;
-        
+
         document.getElementById('breadth-rising-text').innerHTML = `${rising} Tăng`;
         document.getElementById('breadth-rising-pct').innerHTML = `${risingPct}%`;
         document.getElementById('breadth-flat-text').innerHTML = `${flat} Đi ngang`;
         document.getElementById('breadth-flat-pct').innerHTML = `${flatPct}%`;
         document.getElementById('breadth-falling-text').innerHTML = `${falling} Giảm`;
         document.getElementById('breadth-falling-pct').innerHTML = `${fallingPct}%`;
-        
+
         updateMarketBreadthChart(rising, flat, falling);
-        
+
         // Render Top Gainers / Losers
         topGainersEl.innerHTML = '';
         data.top_gainers.forEach(item => {
             topGainersEl.appendChild(createLeaderRow(item, true));
         });
-        
+
         topLosersEl.innerHTML = '';
         data.top_losers.forEach(item => {
             topLosersEl.appendChild(createLeaderRow(item, false));
         });
-        
+
     } catch (error) {
         console.error('Error loading market overview:', error);
     }
@@ -315,10 +315,10 @@ async function loadStockData(symbol) {
     symbol = symbol.toUpperCase();
     currentSymbol = symbol;
     chartSymbolEl.innerHTML = symbol;
-    
+
     // Toggle loader
     if (chartLoaderEl) chartLoaderEl.classList.remove('hidden');
-    
+
     try {
         let result;
         if (isApiOnline) {
@@ -332,20 +332,20 @@ async function loadStockData(symbol) {
             result.foreign_flow = getMockForeignFlow(symbol);
             result.shareholders = getMockShareholders(symbol);
         }
-        
+
         const history = result.history;
         if (!history || history.length === 0) return;
-        
+
         // Update company name dynamically from API payload using innerText to prevent XSS and fix UI bug
         chartCompanyEl.innerText = result.company_name || getCompanyName(symbol);
-        
+
         // Update price display if you have one... (optional, not strictly in instruction but good for sync)
-        
+
         // Render sub-components
         if (result.fundamentals) renderFundamentals(result.fundamentals);
         loadForeignFlow(symbol);
         if (result.shareholders) renderShareholders(result.shareholders);
-        
+
         // Convert to chart format
         const candleData = history.map(item => ({
             time: item.date,
@@ -354,26 +354,26 @@ async function loadStockData(symbol) {
             low: item.low,
             close: item.close
         }));
-        
+
         const volumeData = history.map(item => ({
             time: item.date,
             value: item.volume,
             color: item.close >= item.open ? 'rgba(0, 192, 135, 0.3)' : 'rgba(249, 65, 68, 0.3)'
         }));
-        
+
         // Plot series if chart library is loaded
         if (candlestickSeries && volumeSeries && chartInstance) {
             candlestickSeries.setData(candleData);
             volumeSeries.setData(volumeData);
             chartInstance.timeScale().fitContent();
         }
-        
+
         // Update Indicators display based on latest row
         const latest = history[history.length - 1];
-        
+
         document.getElementById('detail-ma20').innerHTML = latest.ma20 ? formatPrice(latest.ma20) : '-';
         document.getElementById('detail-ma50').innerHTML = latest.ma50 ? formatPrice(latest.ma50) : '-';
-        
+
         // Trend Status
         const trendEl = document.getElementById('detail-trend-status');
         if (latest.close > latest.ma20 && latest.ma20 > latest.ma50) {
@@ -386,15 +386,15 @@ async function loadStockData(symbol) {
             trendEl.innerHTML = 'Đi ngang (Sideways)';
             trendEl.className = 'font-bold text-textmuted';
         }
-        
+
         // RSI
         const rsiVal = latest.rsi ? Math.round(latest.rsi) : 50;
         document.getElementById('detail-rsi-val').innerHTML = rsiVal;
-        
+
         const rsiStatusEl = document.getElementById('detail-rsi-status');
         const rsiProgressEl = document.getElementById('rsi-progress-bar');
         rsiProgressEl.style.width = `${rsiVal}%`;
-        
+
         if (rsiVal >= 70) {
             rsiStatusEl.innerHTML = 'Quá mua (Overbought)';
             rsiStatusEl.className = 'text-xs text-accentred font-semibold';
@@ -408,7 +408,7 @@ async function loadStockData(symbol) {
             rsiStatusEl.className = 'text-xs text-textmuted font-semibold';
             rsiProgressEl.className = 'bg-accentgreen h-full';
         }
-        
+
         // FVG Signal (check last 5 days for latest FVG)
         let lastFvg = null;
         for (let i = history.length - 1; i >= Math.max(0, history.length - 10); i--) {
@@ -417,16 +417,16 @@ async function loadStockData(symbol) {
                 break;
             }
         }
-        
+
         const fvgSignalEl = document.getElementById('detail-fvg-signal');
         const fvgZoneEl = document.getElementById('detail-fvg-zone');
-        
+
         if (lastFvg) {
             const isBullish = lastFvg.fvg_type === 1.0;
             fvgSignalEl.innerHTML = isBullish ? 'Bullish FVG (Tăng)' : 'Bearish FVG (Giảm)';
             fvgSignalEl.className = isBullish ? 'font-bold text-accentgreen' : 'font-bold text-accentred';
             fvgZoneEl.innerHTML = `${formatPrice(lastFvg.fvg_bottom)} - ${formatPrice(lastFvg.fvg_top)} đ`;
-            fvgZoneEl.className = isBullish 
+            fvgZoneEl.className = isBullish
                 ? 'bg-accentgreen/10 text-accentgreen border border-accentgreen/30 rounded-lg p-1.5 text-center text-xs font-mono font-semibold'
                 : 'bg-accentred/10 text-accentred border border-accentred/30 rounded-lg p-1.5 text-center text-xs font-mono font-semibold';
         } else {
@@ -435,7 +435,7 @@ async function loadStockData(symbol) {
             fvgZoneEl.innerHTML = 'Không có vùng gap';
             fvgZoneEl.className = 'bg-darkitem border border-bordergray rounded-lg p-1.5 text-center text-xs font-mono text-textmuted';
         }
-        
+
     } catch (error) {
         console.error('Error loading stock chart data:', error);
     } finally {
@@ -468,9 +468,9 @@ async function loadScreenerData() {
         } else {
             screenerData = getMockScreenerData();
         }
-        
+
         renderScreenerTable(screenerData);
-        
+
     } catch (error) {
         console.error('Error loading screener data:', error);
     }
@@ -478,18 +478,18 @@ async function loadScreenerData() {
 
 function renderScreenerTable(data) {
     screenerTableBody.innerHTML = '';
-    
+
     if (data.length === 0) {
         screenerTableBody.innerHTML = `<tr><td colspan="9" class="py-10 text-center text-textmuted">Không có mã nào khớp với bộ lọc</td></tr>`;
         return;
     }
-    
+
     data.forEach(item => {
         const isPositive = item.change >= 0;
         const colorClass = isPositive ? 'text-accentgreen' : 'text-accentred';
         const tr = document.createElement('tr');
         tr.className = 'border-b border-bordergray';
-        
+
         // FVG Signal badge styling
         let fvgBadge = '<span class="text-textmuted text-xs">-</span>';
         if (item.fvg_signal.includes('Bullish')) {
@@ -497,7 +497,7 @@ function renderScreenerTable(data) {
         } else if (item.fvg_signal.includes('Bearish')) {
             fvgBadge = '<span class="bg-accentred/10 text-accentred border border-accentred/30 text-xs px-2 py-0.5 rounded">Bearish</span>';
         }
-        
+
         // Trend Badge styling
         let trendBadge = '<span class="text-textmuted text-xs">Sideways</span>';
         if (item.trend === 'Bullish') {
@@ -511,7 +511,7 @@ function renderScreenerTable(data) {
         let rsiColor = 'text-textlight';
         if (item.rsi_status === 'Overbought') rsiColor = 'text-accentred font-bold';
         if (item.rsi_status === 'Oversold') rsiColor = 'text-accentblue font-bold';
-        
+
         tr.innerHTML = `
             <td class="py-4 px-4 font-bold text-white text-base">${item.symbol}</td>
             <td class="py-4 px-4 text-xs text-textmuted">${item.name}</td>
@@ -538,10 +538,10 @@ function filterScreener(filterType) {
         btn.classList.remove('active');
     });
     document.getElementById(`btn-filter-${filterType}`).classList.add('active');
-    
+
     // Filter logic
     let filtered = screenerData;
-    
+
     if (filterType === 'bullish') {
         filtered = screenerData.filter(item => item.trend === 'Bullish');
     } else if (filterType === 'oversold') {
@@ -551,7 +551,7 @@ function filterScreener(filterType) {
     } else if (filterType === 'fvg') {
         filtered = screenerData.filter(item => item.fvg_signal !== 'None');
     }
-    
+
     renderScreenerTable(filtered);
 }
 
@@ -560,13 +560,13 @@ function handleChatSubmit(e) {
     e.preventDefault();
     const text = chatInputEl.value.trim();
     if (!text) return;
-    
+
     askAI(text);
 }
 
 function parseMarkdown(text) {
     if (!text) return '';
-    
+
     // Escape HTML to prevent XSS
     let html = text
         .replace(/&/g, '&amp;')
@@ -600,16 +600,16 @@ function parseMarkdown(text) {
 
 async function askAI(question) {
     chatInputEl.value = '';
-    
+
     // 1. Append User Message
     appendMessage(question, true);
-    
+
     // 2. Scroll to bottom
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-    
+
     // 3. Show typing indicator
     const typingId = showTypingIndicator();
-    
+
     try {
         // Extract symbol from question, default to currentSymbol or 'TCB'
         let symbol = currentSymbol || 'TCB';
@@ -646,7 +646,7 @@ async function askAI(question) {
             try {
                 const errData = await response.json();
                 errMsg = errData.detail || errMsg;
-            } catch (e) {}
+            } catch (e) { }
             appendMessage(`<span class="text-accentred font-semibold">${errMsg}</span>`, false);
         }
     } catch (error) {
@@ -654,25 +654,25 @@ async function askAI(question) {
         console.error('Error in askAI:', error);
         appendMessage('<span class="text-accentred font-semibold">Lỗi kết nối mạng. Không thể gửi yêu cầu đến AI Agent.</span>', false);
     }
-    
+
     // Scroll again
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 }
 
 function appendMessage(text, isUser) {
     const msgDiv = document.createElement('div');
-    msgDiv.className = isUser 
+    msgDiv.className = isUser
         ? 'flex items-start gap-3 justify-end animate-fade-in'
         : 'flex items-start gap-3 max-w-[85%] animate-fade-in';
-        
-    const avatarHtml = isUser 
+
+    const avatarHtml = isUser
         ? `<div class="w-8 h-8 rounded-lg bg-accentblue flex items-center justify-center text-white flex-shrink-0 text-xs font-bold">U</div>`
         : `<div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-accentblue to-purple-600 flex items-center justify-center text-white flex-shrink-0 text-xs"><i class="fa-solid fa-robot"></i></div>`;
-        
+
     const bubbleHtml = isUser
         ? `<div class="user-msg-bubble rounded-2xl rounded-tr-none p-4 text-sm leading-relaxed shadow-sm">${text}</div>`
         : `<div class="bg-darkitem border border-bordergray rounded-2xl rounded-tl-none p-4 text-sm leading-relaxed text-textlight shadow-sm">${text}</div>`;
-        
+
     msgDiv.innerHTML = isUser ? `${bubbleHtml}${avatarHtml}` : `${avatarHtml}${bubbleHtml}`;
     chatMessagesEl.appendChild(msgDiv);
 }
@@ -765,16 +765,16 @@ function getMockStockAnalysis(symbol) {
     const basePrice = getMockPrice(symbol);
     const history = [];
     const dateLimit = 100;
-    
+
     // Seed price array
     let prices = [basePrice];
     for (let i = 1; i < dateLimit; i++) {
-        prices.push(prices[i-1] * (1 + (Math.random() * 0.03 - 0.014)));
+        prices.push(prices[i - 1] * (1 + (Math.random() * 0.03 - 0.014)));
     }
-    
+
     const baseDate = new Date();
     baseDate.setDate(baseDate.getDate() - dateLimit * 1.5);
-    
+
     let dates = [];
     while (dates.length < dateLimit) {
         if (baseDate.getDay() !== 0 && baseDate.getDay() !== 6) { // Skip weekends
@@ -782,16 +782,16 @@ function getMockStockAnalysis(symbol) {
         }
         baseDate.setDate(baseDate.getDate() + 1);
     }
-    
+
     // Build OHLCV
     for (let i = 0; i < dateLimit; i++) {
         const close = prices[i];
-        const prev = i > 0 ? prices[i-1] : close;
+        const prev = i > 0 ? prices[i - 1] : close;
         const ohlcSpread = close * 0.02;
         const open = prev + (Math.random() - 0.5) * (ohlcSpread * 0.5);
         const high = Math.max(open, close) + Math.random() * (ohlcSpread * 0.5);
         const low = Math.min(open, close) - Math.random() * (ohlcSpread * 0.5);
-        
+
         // Calculate dynamic indicators (moving averages approximation)
         let ma20 = null;
         let ma50 = null;
@@ -805,13 +805,13 @@ function getMockStockAnalysis(symbol) {
             for (let j = i - 49; j <= i; j++) sum += prices[j];
             ma50 = sum / 50;
         }
-        
+
         // RSI approximation
         let rsi = 50;
         if (symbol === 'FPT') rsi = 72 + (Math.random() * 5 - 2.5);
         else if (symbol === 'VIC') rsi = 28 + (Math.random() * 4 - 2);
         else rsi = 45 + (Math.random() * 20 - 10);
-        
+
         // FVG
         let fvg_type = 0.0;
         let fvg_top = null;
@@ -826,7 +826,7 @@ function getMockStockAnalysis(symbol) {
                 fvg_bottom = low * 0.99;
             }
         }
-        
+
         history.push({
             date: dates[i],
             open: Math.round(open),
@@ -842,7 +842,7 @@ function getMockStockAnalysis(symbol) {
             fvg_bottom: fvg_bottom ? Math.round(fvg_bottom) : null
         });
     }
-    
+
     return { symbol, history };
 }
 
@@ -852,15 +852,15 @@ function getMockScreenerData() {
         const price = getMockPrice(sym);
         const change_percent = sym === 'FPT' ? 5.8 : sym === 'VIC' ? -3.4 : (Math.random() * 6 - 2.5);
         const change = price * (change_percent / 100);
-        
+
         const rsi = sym === 'FPT' ? 72 : sym === 'VIC' ? 28 : (40 + Math.random() * 25);
         let rsi_status = 'Neutral';
         if (rsi >= 70) rsi_status = 'Overbought';
         if (rsi <= 30) rsi_status = 'Oversold';
-        
+
         const trend = sym === 'FPT' || sym === 'TCB' || sym === 'SSI' ? 'Bullish' : sym === 'VIC' || sym === 'VHM' ? 'Bearish' : 'Sideways';
         const fvg_signal = sym === 'FPT' || sym === 'TCB' ? 'Bullish FVG' : sym === 'VIC' ? 'Bearish FVG' : 'None';
-        
+
         return {
             symbol: sym,
             name: getCompanyName(sym),
@@ -885,12 +885,12 @@ function renderFundamentals(data) {
     const roeEl = document.getElementById('fundamental-roe');
     const roaEl = document.getElementById('fundamental-roa');
     const financialsBody = document.getElementById('fundamental-financials-body');
-    
+
     if (peEl) peEl.innerHTML = data.pe !== null && data.pe !== undefined ? data.pe.toFixed(2) : '-';
     if (pbEl) pbEl.innerHTML = data.pb !== null && data.pb !== undefined ? data.pb.toFixed(2) : '-';
     if (roeEl) roeEl.innerHTML = data.roe !== null && data.roe !== undefined ? `${data.roe.toFixed(1)}%` : '-';
     if (roaEl) roaEl.innerHTML = data.roa !== null && data.roa !== undefined ? `${data.roa.toFixed(1)}%` : '-';
-    
+
     if (financialsBody) {
         financialsBody.innerHTML = '';
         if (data.financials && data.financials.length > 0) {
@@ -947,17 +947,17 @@ function getMockFundamentalData(symbol) {
             ]
         }
     };
-    
+
     if (defaults[symbol]) {
         return defaults[symbol];
     }
-    
+
     const isBank = ['TCB', 'STB', 'MBB'].includes(symbol);
     const pe = isBank ? 8.2 : 14.5;
     const pb = isBank ? 1.2 : 2.5;
     const roe = 16.5;
     const roa = isBank ? 2.1 : 8.5;
-    
+
     return {
         pe: pe,
         pb: pb,
@@ -974,7 +974,7 @@ function getMockFundamentalData(symbol) {
 async function loadMarketNews() {
     const newsContainer = document.getElementById('news-container');
     if (!newsContainer) return;
-    
+
     try {
         let newsList;
         if (isApiOnline) {
@@ -987,7 +987,7 @@ async function loadMarketNews() {
         } else {
             newsList = getMockNewsList();
         }
-        
+
         renderNews(newsList);
     } catch (error) {
         console.error('Error loading market news:', error);
@@ -998,7 +998,7 @@ async function loadMarketNews() {
 function renderNews(newsList) {
     const newsContainer = document.getElementById('news-container');
     if (!newsContainer) return;
-    
+
     newsContainer.innerHTML = '';
     if (newsList && newsList.length > 0) {
         newsList.forEach(item => {
@@ -1072,7 +1072,7 @@ function getMockNewsList() {
 
 function updateMarketBreadthChart(rising, flat, falling) {
     const ctx = document.getElementById('marketBreadthChart').getContext('2d');
-    
+
     const chartData = {
         labels: ['Tăng', 'Đi ngang', 'Giảm'],
         datasets: [{
@@ -1087,7 +1087,7 @@ function updateMarketBreadthChart(rising, flat, falling) {
             hoverOffset: 3
         }]
     };
-    
+
     if (marketBreadthChartInstance) {
         marketBreadthChartInstance.data = chartData;
         marketBreadthChartInstance.update();
@@ -1112,7 +1112,7 @@ function updateMarketBreadthChart(rising, flat, falling) {
                         borderWidth: 1,
                         displayColors: false,
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const value = context.raw;
                                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
@@ -1148,7 +1148,7 @@ async function loadForeignFlow(symbol) {
         } else {
             data = getMockForeignFlow(symbol);
         }
-        
+
         renderForeignFlowChart(data);
     } catch (error) {
         console.error('Error loading foreign flow:', error);
@@ -1161,21 +1161,21 @@ function renderForeignFlowChart(data) {
     const canvas = document.getElementById('foreignFlowChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
+
     if (!data || !data.history || data.history.length === 0) {
         return;
     }
-    
+
     // Reverse to chronological order (oldest to newest)
     const sortedHistory = [...data.history].reverse();
-    
+
     const labels = sortedHistory.map(item => formatDateDDMM(item.date));
     const values = sortedHistory.map(item => item.net_value);
-    
+
     // Greenish for positive net value, Reddish for negative net value
     const backgroundColors = values.map(val => val >= 0 ? 'rgba(0, 192, 135, 0.45)' : 'rgba(249, 65, 68, 0.45)');
     const borderColors = values.map(val => val >= 0 ? '#00C087' : '#F94144');
-    
+
     const chartData = {
         labels: labels,
         datasets: [{
@@ -1188,7 +1188,7 @@ function renderForeignFlowChart(data) {
             borderSkipped: false
         }]
     };
-    
+
     if (foreignFlowChartInstance) {
         foreignFlowChartInstance.data = chartData;
         foreignFlowChartInstance.update();
@@ -1212,7 +1212,7 @@ function renderForeignFlowChart(data) {
                         borderWidth: 1,
                         displayColors: false,
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 const val = context.raw;
                                 if (val >= 0) {
                                     return ` Mua ròng: +${val.toFixed(2)} tỷ VND`;
@@ -1248,7 +1248,7 @@ function renderForeignFlowChart(data) {
                                 family: 'Outfit, sans-serif',
                                 size: 10
                             },
-                            callback: function(value) {
+                            callback: function (value) {
                                 return value + ' tỷ';
                             }
                         }
@@ -1263,26 +1263,26 @@ function getMockForeignFlow(symbol) {
     symbol = symbol.toUpperCase();
     const baseBuy = { 'FPT': 65.5, 'HPG': 110.2, 'VNM': 45.8, 'TCB': 55.4 };
     const base = baseBuy[symbol] || 40.0;
-    
+
     const history = [];
     const now = new Date();
     let daysGenerated = 0;
     let offset = 0;
-    
+
     while (daysGenerated < 10) {
         const d = new Date(now);
         d.setDate(d.getDate() - offset);
         offset++;
         if (d.getDay() === 0 || d.getDay() === 6) continue;
-        
+
         const buy = Math.round((base * (0.7 + Math.random() * 0.7)) * 100) / 100;
         const sell = Math.round((base * (0.6 + Math.random() * 0.7)) * 100) / 100;
         let net = Math.round((buy - sell) * 100) / 100;
-        
+
         // Make FPT tend positive, VIC tend negative
         if (symbol === 'FPT') net = Math.abs(net) + Math.round(Math.random() * 10 * 100) / 100;
         if (symbol === 'VIC') net = -Math.abs(net) - Math.round(Math.random() * 15 * 100) / 100;
-        
+
         history.push({
             date: d.toISOString().split('T')[0],
             buy_value: Math.round((sell + Math.max(net, 0)) * 100) / 100,
@@ -1291,7 +1291,7 @@ function getMockForeignFlow(symbol) {
         });
         daysGenerated++;
     }
-    
+
     return {
         latest: history[0],
         history: history
@@ -1306,23 +1306,23 @@ function getMockForeignFlow(symbol) {
 function renderShareholders(data) {
     const tableBody = document.getElementById('shareholders-table-body');
     if (!tableBody) return;
-    
+
     tableBody.innerHTML = '';
-    
+
     if (!data || data.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-textmuted">Không có dữ liệu cổ đông</td></tr>';
         return;
     }
-    
+
     // Sort by percentage descending
     data.sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
-    
+
     const maxPct = Math.max(...data.map(d => d.percentage || 0), 1);
-    
+
     data.forEach((shareholder, index) => {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-bordergray/15 hover:bg-darkitem/40 transition-all';
-        
+
         // Determine if this is a fund/institution by keywords
         const name = shareholder.name || '';
         const isFund = /quỹ|capital|fund|vinacapital|dragon|fidelity|ssiam|ngoại|scic|tổng công ty/i.test(name);
@@ -1332,9 +1332,9 @@ function renderShareholders(data) {
         const tagHtml = isFund
             ? '<span class="ml-1.5 text-[9px] bg-purple-500/15 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded-md font-semibold">QUỸ</span>'
             : '';
-        
+
         const barWidthPct = Math.min((shareholder.percentage / maxPct) * 100, 100);
-        
+
         tr.innerHTML = `
             <td class="py-2.5 pr-2">
                 <div class="flex items-center gap-2">
@@ -1382,9 +1382,9 @@ function getMockShareholders(symbol) {
             { name: 'Cổ đông nước ngoài (Room tối đa)', shares: 776000000, percentage: 22.00 }
         ]
     };
-    
+
     if (mockData[symbol]) return mockData[symbol];
-    
+
     return [
         { name: 'Ban điều hành & HĐQT', shares: 12000000, percentage: 5.40 },
         { name: 'Tổng công ty Đầu tư SCIC', shares: 22000000, percentage: 9.90 },

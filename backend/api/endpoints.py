@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from services.stock_service import (
     get_market_overview_data,
     get_screener_data,
@@ -10,6 +11,7 @@ from services.stock_service import (
     get_stock_full_analysis
 )
 from services.cache import clear_cache, get_cache_stats
+from services.ai_service import analyze_stock_with_gemini
 
 router = APIRouter(prefix="/api")
 
@@ -119,3 +121,43 @@ async def clear_api_cache():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error clearing cache: {str(e)}")
+
+class ChatRequest(BaseModel):
+    symbol: str
+    message: str
+
+@router.post("/ai-agent/chat")
+async def ai_agent_chat(request: ChatRequest):
+    """
+    Endpoint nhận câu hỏi của người dùng và gọi Gemini API để phân tích mã cổ phiếu.
+    """
+    try:
+        symbol = request.symbol.upper().strip()
+        message = request.message.strip()
+        
+        if not symbol or len(symbol) < 3 or len(symbol) > 5:
+            raise HTTPException(status_code=400, detail="Mã cổ phiếu không hợp lệ. Phải từ 3 đến 5 ký tự.")
+            
+        if not message:
+            raise HTTPException(status_code=400, detail="Nội dung câu hỏi không được để trống.")
+            
+        # Lấy dữ liệu thực tế hiện tại của mã đó từ stock_service
+        full_analysis = get_stock_full_analysis(symbol)
+        
+        if not full_analysis or not full_analysis.get("history"):
+            raise HTTPException(status_code=404, detail=f"Không tìm thấy dữ liệu cho mã {symbol}")
+            
+        financial_data = full_analysis.get("fundamentals")
+        technical_data = full_analysis.get("history")
+        
+        # Chuyển tiếp sang ai_service để nhận phản hồi từ Gemini
+        ai_response = analyze_stock_with_gemini(symbol, financial_data, technical_data, message)
+        
+        return {
+            "symbol": symbol,
+            "response": ai_response
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khi xử lý yêu cầu AI Agent: {str(e)}")

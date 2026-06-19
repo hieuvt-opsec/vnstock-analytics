@@ -564,7 +564,41 @@ function handleChatSubmit(e) {
     askAI(text);
 }
 
-function askAI(question) {
+function parseMarkdown(text) {
+    if (!text) return '';
+    
+    // Escape HTML to prevent XSS
+    let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Headings (### title, ## title, # title)
+    html = html.replace(/^### (.*$)/gim, '<h4 class="text-sm font-bold text-white mt-3 mb-1">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 class="text-base font-bold text-white mt-4 mb-2">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 class="text-lg font-bold text-white mt-5 mb-3">$1</h2>');
+
+    // Bold (**text** or __text__)
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+    // Italic (*text* or _text_)
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+
+    // Bullet points (- item or * item)
+    html = html.replace(/^\s*[-*]\s+(.*)$/gim, '<li class="ml-4 list-disc text-xs my-1">$1</li>');
+
+    // Horizontal Rule (---)
+    html = html.replace(/^---$/gim, '<hr class="border-bordergray my-3">');
+
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
+}
+
+async function askAI(question) {
     chatInputEl.value = '';
     
     // 1. Append User Message
@@ -576,18 +610,53 @@ function askAI(question) {
     // 3. Show typing indicator
     const typingId = showTypingIndicator();
     
-    // 4. Simulate Response timeout
-    setTimeout(() => {
+    try {
+        // Extract symbol from question, default to currentSymbol or 'TCB'
+        let symbol = currentSymbol || 'TCB';
+        const supportedSymbols = ['FPT', 'HPG', 'VNM', 'SSI', 'TCB', 'VIC', 'VHM', 'MWG', 'STB', 'MBB'];
+        const cleanQ = question.toUpperCase();
+        for (let sym of supportedSymbols) {
+            if (cleanQ.includes(sym)) {
+                symbol = sym;
+                break;
+            }
+        }
+
+        // Call backend API
+        const response = await fetch(`${API_BASE_URL}/api/ai-agent/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                symbol: symbol,
+                message: question
+            })
+        });
+
         // Remove typing indicator
         removeTypingIndicator(typingId);
-        
-        // Generate Smart response based on keywords
-        const responseText = generateSmartAiResponse(question);
-        appendMessage(responseText, false);
-        
-        // Scroll again
-        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-    }, 1200);
+
+        if (response.ok) {
+            const data = await response.json();
+            const parsedResponse = parseMarkdown(data.response);
+            appendMessage(parsedResponse, false);
+        } else {
+            let errMsg = 'Không thể kết nối với AI Agent. Vui lòng thử lại sau.';
+            try {
+                const errData = await response.json();
+                errMsg = errData.detail || errMsg;
+            } catch (e) {}
+            appendMessage(`<span class="text-accentred font-semibold">${errMsg}</span>`, false);
+        }
+    } catch (error) {
+        removeTypingIndicator(typingId);
+        console.error('Error in askAI:', error);
+        appendMessage('<span class="text-accentred font-semibold">Lỗi kết nối mạng. Không thể gửi yêu cầu đến AI Agent.</span>', false);
+    }
+    
+    // Scroll again
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 }
 
 function appendMessage(text, isUser) {
@@ -615,10 +684,13 @@ function showTypingIndicator() {
     div.className = 'flex items-start gap-3 max-w-[85%] animate-fade-in';
     div.innerHTML = `
         <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-accentblue to-purple-600 flex items-center justify-center text-white flex-shrink-0 text-xs"><i class="fa-solid fa-robot"></i></div>
-        <div class="bg-darkitem border border-bordergray rounded-2xl rounded-tl-none p-4 text-sm text-textmuted flex items-center gap-1.5 shadow-sm">
-            <span class="w-2 h-2 bg-textmuted rounded-full animate-bounce" style="animation-delay: 0s"></span>
-            <span class="w-2 h-2 bg-textmuted rounded-full animate-bounce" style="animation-delay: 0.15s"></span>
-            <span class="w-2 h-2 bg-textmuted rounded-full animate-bounce" style="animation-delay: 0.3s"></span>
+        <div class="bg-darkitem border border-bordergray rounded-2xl rounded-tl-none p-4 text-sm text-textmuted flex items-center gap-2 shadow-sm">
+            <span>AI đang phân tích...</span>
+            <div class="flex gap-1">
+                <span class="w-1.5 h-1.5 bg-textmuted rounded-full animate-bounce" style="animation-delay: 0s"></span>
+                <span class="w-1.5 h-1.5 bg-textmuted rounded-full animate-bounce" style="animation-delay: 0.15s"></span>
+                <span class="w-1.5 h-1.5 bg-textmuted rounded-full animate-bounce" style="animation-delay: 0.3s"></span>
+            </div>
         </div>
     `;
     chatMessagesEl.appendChild(div);
@@ -631,64 +703,6 @@ function removeTypingIndicator(id) {
     if (indicator) {
         indicator.remove();
     }
-}
-
-// Simple rule-based AI parser to feel realistic
-function generateSmartAiResponse(question) {
-    const cleanQ = question.toLowerCase();
-    
-    // Look up what symbol is mentioned
-    let symbol = 'TCB';
-    const supportedSymbols = ['FPT', 'HPG', 'VNM', 'SSI', 'TCB', 'VIC', 'VHM', 'MWG', 'STB', 'MBB'];
-    for (let sym of supportedSymbols) {
-        if (cleanQ.includes(sym.toLowerCase())) {
-            symbol = sym;
-            break;
-        }
-    }
-    
-    const company = getCompanyName(symbol);
-    
-    if (cleanQ.includes('fvg') || cleanQ.includes('khoảng trống')) {
-        return `Tôi đã quét tín hiệu **Fair Value Gap (FVG)** trên biểu đồ **${symbol} (${company})**. 
-        <br><br>
-        • Trên khung 1 ngày (1D), ${symbol} hiện tại đang cho thấy tín hiệu **${symbol === 'FPT' || symbol === 'TCB' ? 'Bullish FVG (Tăng)' : 'Không có khoảng trống FVG lớn'}** mới hình thành. 
-        <br>
-        • Vùng hỗ trợ FVG quan trọng được xác lập gần nhất xung quanh vùng giá: **${formatPrice(getMockPrice(symbol) * 0.95)} - ${formatPrice(getMockPrice(symbol) * 0.97)} đ**. 
-        <br><br>
-        Hành động khuyến nghị: Đây là vùng mất cân bằng thanh khoản, giá có xu hướng quay về lấp đầy gap (lấp FVG) trước khi tiếp tục xu hướng. Bạn nên đợi tín hiệu giá phản ứng (nến rút chân) tại vùng này trước khi giải ngân mua lên.`;
-    }
-    
-    if (cleanQ.includes('lọc') || cleanQ.includes('screener') || cleanQ.includes('quá bán') || cleanQ.includes('quá mua')) {
-        return `Đã tiến hành chạy bộ lọc chỉ báo kỹ thuật chứng khoán Việt Nam:
-        <br><br>
-        1. **Mã quá bán (RSI <= 30)**: Hiện tại có mã **VIC, VHM** đang có mức RSI dao động ở ngưỡng 27-29, thích hợp cho việc mua gom tích trữ dài hạn.
-        2. **Mã quá mua (RSI >= 70)**: Mã **FPT** có RSI chạm 72, động lượng rất mạnh nhưng không thích hợp mở vị thế mua đuổi.
-        3. **Xu hướng tăng mạnh (MA20 > MA50)**: **FPT, TCB, SSI** là các đại diện cho xu hướng tăng đồng thuận.
-        <br><br>
-        Bạn có thể chuyển sang tab **Bộ lọc cổ phiếu** để theo dõi bảng chi tiết đầy đủ hơn.`;
-    }
-
-    if (cleanQ.includes('phân tích') || cleanQ.includes('ma') || cleanQ.includes('rsi') || cleanQ.includes('nhận định')) {
-        const mockPrice = getMockPrice(symbol);
-        return `Dưới đây là tóm tắt nhanh phân tích kỹ thuật cho mã **${symbol}** (${company}):
-        <br><br>
-        • **Thị giá hiện tại**: ~${formatPrice(mockPrice)} đ.
-        <br>
-        • **Chỉ báo RSI**: Dao động ở mức ~${symbol === 'FPT' ? '72 (Quá mua)' : symbol === 'VIC' ? '28 (Quá bán)' : '54 (Trung tính)'}.
-        <br>
-        • **Đường Trung bình động (MA)**: Đường MA20 hiện tại là **${formatPrice(mockPrice * 0.98)}** đ và MA50 là **${formatPrice(mockPrice * 0.96)}** đ. Vì giá nằm trên cả 2 đường MA, ${symbol} đang giữ được cấu trúc tăng giá vững chắc.
-        <br><br>
-        **Nhận định nhanh**: Nên nắm giữ vị thế. Điểm mua tối ưu tiếp theo sẽ nằm gần vùng hội tụ của đường MA20 (~${formatPrice(mockPrice * 0.98)} đ).`;
-    }
-    
-    return `Tôi ghi nhận câu hỏi của bạn về: "${question}".
-    <br><br>
-    Theo dữ liệu phân tích kỹ thuật hiện tại của hệ thống, chỉ số **VNINDEX** đang duy trì ở mức ổn định. 
-    Bạn có thể hỏi sâu hơn về các chỉ báo như:
-    - *"Hãy phân tích kỹ thuật mã TCB"*
-    - *"Có khoảng trống FVG nào trên cổ phiếu HPG không?"*
-    - *"Lọc giúp tôi các cổ phiếu có xu hướng tăng MA"*`;
 }
 
 // 9. Format helpers & Mock Data Backups for offline state

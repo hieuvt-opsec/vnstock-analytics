@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNStock Analytics - Hệ Thống Phân Tích Chứng Khoán Việt Nam</title>
+    
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        darkbg: '#080B10',
+                        darkcard: '#11151F',
+                        darkitem: '#1E2330',
+                        bordergray: '#232936',
+                        accentgreen: '#00C087',
+                        accentred: '#F94144',
+                        accentblue: '#2F80ED',
+                        textmuted: '#848E9C',
+                        textlight: '#EAECEF',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Visual Debugger for Errors -->
+    <script>
+        window.addEventListener('error', function(e) {
+            const div = document.createElement('div');
+            div.id = 'debug-error-overlay';
+            div.style.position = 'fixed';
+            div.style.bottom = '0';
+            div.style.left = '0';
+            div.style.width = '100%';
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = 'white';
+            div.style.padding = '12px';
+            div.style.zIndex = '999999';
+            div.style.fontFamily = 'monospace';
+            div.style.fontSize = '12px';
+            div.style.borderTop = '2px solid white';
+            div.style.wordBreak = 'break-all';
+            div.innerHTML = '<strong>[JS ERROR]</strong> ' + e.message + ' <br><em>at ' + e.filename + ':' + e.lineno + ':' + e.colno + '</em>';
+            document.body.appendChild(div);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            const div = document.createElement('div');
+            div.id = 'debug-rejection-overlay';
+            div.style.position = 'fixed';
+            div.style.bottom = '60px';
+            div.style.left = '0';
+            div.style.width = '100%';
+            div.style.background = 'rgba(245, 158, 11, 0.95)';
+            div.style.color = 'black';
+            div.style.padding = '12px';
+            div.style.zIndex = '999999';
+            div.style.fontFamily = 'monospace';
+            div.style.fontSize = '12px';
+            div.style.borderTop = '2px solid black';
+            div.style.wordBreak = 'break-all';
+            div.innerHTML = '<strong>[PROMISE REJECTION]</strong> ' + e.reason;
+            document.body.appendChild(div);
+        });
+    </script>
+    
+    <!-- CSS Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- TradingView Lightweight Charts CDN -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-darkbg text-textlight min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-bordergray bg-darkcard/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-accentgreen to-accentblue w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-accentgreen/10">
+                    <i class="fa-solid fa-chart-line text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        VNSTOCK <span class="text-xs bg-accentgreen/20 text-accentgreen border border-accentgreen/30 px-2 py-0.5 rounded-full font-semibold">ANALYTICS</span>
+                    </h1>
+                    <p class="text-xs text-textmuted">Hệ thống phân tích kỹ thuật thông minh</p>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <nav class="flex bg-darkbg border border-bordergray p-1 rounded-xl">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie"></i> Tổng quan
+                </button>
+                <button onclick="switchTab('screener')" id="tab-screener" class="tab-btn px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-filter"></i> Bộ lọc cổ phiếu
+                </button>
+                <button onclick="switchTab('aiagent')" id="tab-aiagent" class="tab-btn px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-robot"></i> AI Agent
+                </button>
+            </nav>
+
+            <!-- Status Indicator -->
+            <div class="flex items-center gap-2 text-sm bg-darkitem border border-bordergray px-3 py-1.5 rounded-xl">
+                <span class="w-2.5 h-2.5 rounded-full bg-accentgreen animate-pulse"></span>
+                <span class="text-xs font-semibold text-textlight" id="api-status">API: Đang kết nối...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+        
+        <!-- ================= TAB: DASHBOARD ================= -->
+        <section id="content-dashboard" class="tab-content block space-y-6">
+            
+            <!-- Index Cards Row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="market-indexes">
+                <!-- Index Card (VNINDEX) -->
+                <div class="bg-darkcard border border-bordergray rounded-2xl p-4 flex justify-between items-center relative overflow-hidden animate-fade-in">
+                    <div>
+                        <span class="text-sm font-semibold text-textmuted">VN-INDEX</span>
+                        <h2 class="text-2xl font-bold mt-1 text-accentgreen" id="idx-vnindex-val">1,280.50</h2>
+                        <span class="text-xs font-medium text-accentgreen" id="idx-vnindex-chg">+12.45 (+0.98%)</span>
+                    </div>
+                    <div class="text-accentgreen/10 text-5xl absolute -right-2 -bottom-2"><i class="fa-solid fa-trend-up"></i></div>
+                </div>
+                
+                <!-- Index Card (VN30) -->
+                <div class="bg-darkcard border border-bordergray rounded-2xl p-4 flex justify-between items-center relative overflow-hidden animate-fade-in">
+                    <div>
+                        <span class="text-sm font-semibold text-textmuted">VN30-INDEX</span>
+                        <h2 class="text-2xl font-bold mt-1 text-accentgreen" id="idx-vn30-val">1,310.20</h2>
+                        <span class="text-xs font-medium text-accentgreen" id="idx-vn30-chg">+14.20 (+1.09%)</span>
+                    </div>
+                    <div class="text-accentgreen/10 text-5xl absolute -right-2 -bottom-2"><i class="fa-solid fa-trend-up"></i></div>
+                </div>
+
+                <!-- Index Card (HNX) -->
+                <div class="bg-darkcard border border-bordergray rounded-2xl p-4 flex justify-between items-center relative overflow-hidden animate-fade-in">
+                    <div>
+                        <span class="text-sm font-semibold text-textmuted">HNX-INDEX</span>
+                        <h2 class="text-2xl font-bold mt-1 text-accentred" id="idx-hnx-val">245.30</h2>
+                        <span class="text-xs font-medium text-accentred" id="idx-hnx-chg">-1.20 (-0.49%)</span>
+                    </div>
+                    <div class="text-accentred/10 text-5xl absolute -right-2 -bottom-2"><i class="fa-solid fa-trend-down"></i></div>
+                </div>
+            </div>
+
+            <!-- Market Info Banner (Liquidity & Breadth) -->
+            <div class="bg-darkcard border border-bordergray rounded-2xl p-4 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm text-textmuted">Thanh khoản hôm nay:</span>
+                    <span class="font-bold text-white text-base" id="market-liquidity">18,500 tỷ VND</span>
+                    <span class="text-xs text-textmuted">(HOSE + HNX)</span>
+                </div>
+                <!-- Market Breadth Chart -->
+                <div class="flex items-center gap-4 flex-grow md:max-w-md bg-darkitem/30 border border-bordergray/30 rounded-xl p-2 px-3 justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-textmuted whitespace-nowrap font-semibold">Độ rộng thị trường:</span>
+                        <div class="w-12 h-12 relative flex items-center justify-center">
+                            <canvas id="marketBreadthChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 text-[11px] font-semibold">
+                        <div class="flex flex-col items-end">
+                            <span class="text-accentgreen" id="breadth-rising-text">0 Tăng</span>
+                            <span class="text-[9px] text-textmuted" id="breadth-rising-pct">0%</span>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <span class="text-textmuted" id="breadth-flat-text">0 Đi ngang</span>
+                            <span class="text-[9px] text-textmuted" id="breadth-flat-pct">0%</span>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <span class="text-accentred" id="breadth-falling-text">0 Giảm</span>
+                            <span class="text-[9px] text-textmuted" id="breadth-falling-pct">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Main Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                
+                <!-- Left Sidebar: Stock search & Watchlist -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-darkcard border border-bordergray rounded-2xl p-4">
+                        <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-search text-accentblue"></i> Tìm Kiếm Cổ Phiếu
+                        </h3>
+                        <div class="relative">
+                            <input type="text" id="stock-search-input" placeholder="Nhập mã (VD: TCB, FPT...)" class="w-full bg-darkitem border border-bordergray rounded-xl px-4 py-2.5 text-white text-sm font-semibold uppercase focus:outline-none focus:border-accentblue transition-all">
+                            <button onclick="searchStock()" class="absolute right-2 top-2 bg-accentblue hover:bg-accentblue/90 text-white rounded-lg px-3 py-1 text-xs font-semibold transition-all">
+                                Xem
+                            </button>
+                        </div>
+                        <div class="mt-4 text-xs text-textmuted">
+                            Các mã hỗ trợ: <span class="text-white font-semibold">Hỗ trợ toàn bộ rổ VN30 (VD: FPT, HPG, TCB, VCB, ACB, BID, CTG, VPB, MBB...)</span>
+                        </div>
+                    </div>
+
+                    <!-- Market Leaders -->
+                    <div class="bg-darkcard border border-bordergray rounded-2xl p-4">
+                        <h3 class="text-sm font-bold text-white mb-3">Mã Tăng/Giảm Nổi Bật</h3>
+                        <div class="space-y-3">
+                            <div class="text-xs font-semibold text-textmuted uppercase tracking-wider">Tăng nhiều nhất</div>
+                            <div id="top-gainers-list" class="space-y-2">
+                                <!-- Dynamic items here -->
+                            </div>
+                            <hr class="border-bordergray my-3">
+                            <div class="text-xs font-semibold text-textmuted uppercase tracking-wider">Giảm nhiều nhất</div>
+                            <div id="top-losers-list" class="space-y-2">
+                                <!-- Dynamic items here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle & Right: Chart & Indicators -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- Chart Panel -->
+                    <div class="bg-darkcard border border-bordergray rounded-2xl p-5 flex flex-col">
+                        <div class="flex justify-between items-center mb-4 pb-3 border-b border-bordergray">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl font-bold text-white tracking-tight" id="chart-symbol">TCB</span>
+                                <span class="text-xs bg-darkitem border border-bordergray text-textmuted px-2.5 py-1 rounded-lg" id="chart-company-name">Ngân hàng Kỹ thương Việt Nam</span>
+                            </div>
+                            <!-- Indicators Legend / Badges -->
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-xs bg-accentblue/10 text-accentblue border border-accentblue/20 px-2 py-1 rounded-lg font-medium">MA20</span>
+                                <span class="text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-1 rounded-lg font-medium">MA50</span>
+                                <span class="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-1 rounded-lg font-medium">RSI</span>
+                            </div>
+                        </div>
+                        
+                        <!-- TradingView Lightweight Charts Container -->
+                        <div id="chart-container" class="w-full relative rounded-xl overflow-hidden bg-darkbg border border-bordergray">
+                            <!-- Loader -->
+                            <div id="chart-loader" class="absolute inset-0 bg-darkbg/80 flex items-center justify-center z-10">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-8 h-8 border-4 border-accentblue border-t-transparent rounded-full animate-spin"></div>
+                                    <span class="text-xs text-textmuted">Đang tải dữ liệu biểu đồ...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical Details Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- MA Card -->
+                        <div class="bg-darkcard border border-bordergray rounded-2xl p-4">
+                            <h4 class="text-xs font-bold text-textmuted uppercase tracking-wider mb-2">Đường Xu Hướng (MA)</h4>
+                            <div class="space-y-2 mt-3">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-textmuted">Đường MA20</span>
+                                    <span id="detail-ma20" class="font-bold text-white">-</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-textmuted">Đường MA50</span>
+                                    <span id="detail-ma50" class="font-bold text-white">-</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-textmuted">Trạng thái xu hướng</span>
+                                    <span id="detail-trend-status" class="font-bold text-accentgreen">Tăng trưởng</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RSI Card -->
+                        <div class="bg-darkcard border border-bordergray rounded-2xl p-4">
+                            <h4 class="text-xs font-bold text-textmuted uppercase tracking-wider mb-2">Chỉ số sức mạnh tương đối (RSI)</h4>
+                            <div class="flex items-end justify-between mt-3">
+                                <div>
+                                    <h3 class="text-2xl font-bold text-white" id="detail-rsi-val">-</h3>
+                                    <span class="text-xs" id="detail-rsi-status">Trung tính</span>
+                                </div>
+                                <!-- Progress bar vertical representation -->
+                                <div class="w-16 h-3 bg-bordergray rounded-full overflow-hidden flex">
+                                    <div id="rsi-progress-bar" class="bg-accentblue h-full" style="width: 50%"></div>
+                                </div>
+                            </div>
+                            <div class="text-[10px] text-textmuted mt-3">RSI &gt;= 70: Quá mua | RSI &lt;= 30: Quá bán</div>
+                        </div>
+
+                        <!-- FVG Card -->
+                        <div class="bg-darkcard border border-bordergray rounded-2xl p-4">
+                            <h4 class="text-xs font-bold text-textmuted uppercase tracking-wider mb-2">Khoảng Trống Giá (FVG)</h4>
+                            <div class="space-y-2 mt-3">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-textmuted">Tín hiệu FVG gần nhất</span>
+                                    <span id="detail-fvg-signal" class="font-bold text-accentgreen">-</span>
+                                </div>
+                                <div class="flex justify-between text-[11px] text-textmuted">
+                                    <span>Vùng kháng cự/hỗ trợ FVG tiếp theo</span>
+                                </div>
+                                <div class="bg-darkitem border border-bordergray rounded-lg p-1.5 text-center text-xs font-mono" id="detail-fvg-zone">
+                                    Khung FVG trống
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fundamental & News Section -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                        <!-- Fundamental Panel -->
+                        <div class="bg-darkcard border border-bordergray rounded-2xl p-5 flex flex-col">
+                            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-accentblue"></i> Chỉ Số Cơ Bản & BCTC Tóm Tắt
+                            </h3>
+                            
+                            <!-- Ratios Grid -->
+                            <div class="grid grid-cols-4 gap-2 mb-4">
+                                <div class="bg-darkitem border border-bordergray/40 rounded-xl p-3 text-center">
+                                    <div class="text-[10px] text-textmuted mb-1 font-semibold">P/E</div>
+                                    <div class="text-sm font-bold text-white" id="fundamental-pe">-</div>
+                                </div>
+                                <div class="bg-darkitem border border-bordergray/40 rounded-xl p-3 text-center">
+                                    <div class="text-[10px] text-textmuted mb-1 font-semibold">P/B</div>
+                                    <div class="text-sm font-bold text-white" id="fundamental-pb">-</div>
+                                </div>
+                                <div class="bg-darkitem border border-bordergray/40 rounded-xl p-3 text-center">
+                                    <div class="text-[10px] text-textmuted mb-1 font-semibold">ROE (%)</div>
+                                    <div class="text-sm font-bold text-accentgreen" id="fundamental-roe">-</div>
+                                </div>
+                                <div class="bg-darkitem border border-bordergray/40 rounded-xl p-3 text-center">
+                                    <div class="text-[10px] text-textmuted mb-1 font-semibold">ROA (%)</div>
+                                    <div class="text-sm font-bold text-accentblue" id="fundamental-roa">-</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Financial Statement Table -->
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-left">
+                                    <thead>
+                                        <tr class="text-textmuted border-b border-bordergray/60 font-semibold">
+                                            <th class="pb-2">Kỳ báo cáo</th>
+                                            <th class="pb-2 text-right">Doanh thu (tỷ)</th>
+                                            <th class="pb-2 text-right">LN sau thuế (tỷ)</th>
+                                            <th class="pb-2 text-right">Tổng tài sản (tỷ)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fundamental-financials-body" class="divide-y divide-bordergray/20 text-white">
+                                        <tr>
+                                            <td colspan="4" class="py-4 text-center text-textmuted">Chưa có dữ liệu tài chính</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- News Panel -->
+                        <div class="bg-darkcard border border-bordergray rounded-2xl p-5 flex flex-col">
+                            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-newspaper text-accentblue"></i> Tin Tức Doanh Nghiệp & Thị Trường
+                            </h3>
+                            
+                            <div class="space-y-3 overflow-y-auto max-h-[220px] pr-1 scrollbar-thin" id="news-container">
+                                <div class="text-center py-8 text-xs text-textmuted">
+                                    Đang tải tin tức thị trường...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shareholder & Foreign Flow Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                        <!-- Shareholders Panel -->
+                        <div class="bg-darkcard border border-bordergray rounded-2xl p-5 flex flex-col">
+                            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-users text-accentblue"></i> Cơ Cấu Cổ Đông & Quỹ Nắm Giữ
+                            </h3>
+                            
+                            <div class="overflow-x-auto flex-grow max-h-[220px] scrollbar-thin">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="border-b border-bordergray/30 text-textmuted font-bold">
+                                            <th class="pb-2">Cổ đông / Quỹ đầu tư</th>
+                                            <th class="pb-2 text-right">Số cổ phần</th>
+                                            <th class="pb-2 text-right">Tỷ lệ (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="shareholders-table-body">
+                                        <tr>
+                                            <td colspan="3" class="py-4 text-center text-textmuted">Đang tải cơ cấu cổ đông...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Foreign Flow Panel -->
+                        <div class="bg-darkcard border border-bordergray rounded-2xl p-5 flex flex-col h-[320px]">
+                            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-accentblue"></i> Dòng Tiền Khối Ngoại (10 Phiên Gần Nhất)
+                            </h3>
+                            
+                            <div class="relative flex-grow w-full min-h-[200px]">
+                                <canvas id="foreignFlowChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: SCREENER ================= -->
+        <section id="content-screener" class="tab-content hidden space-y-6">
+            <div class="bg-darkcard border border-bordergray rounded-2xl p-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">Bộ Lọc Cổ Phiếu Thông Minh</h2>
+                        <p class="text-xs text-textmuted">Lọc danh sách các cổ phiếu hàng đầu theo tiêu chí chỉ báo kỹ thuật thời gian thực.</p>
+                    </div>
+                    <!-- Quick Filters buttons -->
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterScreener('all')" id="btn-filter-all" class="filter-btn active text-xs font-semibold px-4 py-2 rounded-xl border border-bordergray bg-darkitem text-white transition-all">Tất cả</button>
+                        <button onclick="filterScreener('bullish')" id="btn-filter-bullish" class="filter-btn text-xs font-semibold px-4 py-2 rounded-xl border border-bordergray text-textmuted transition-all"><i class="fa-solid fa-arrow-trend-up text-accentgreen mr-1"></i> Xu hướng Tăng</button>
+                        <button onclick="filterScreener('oversold')" id="btn-filter-oversold" class="filter-btn text-xs font-semibold px-4 py-2 rounded-xl border border-bordergray text-textmuted transition-all"><i class="fa-solid fa-gauge-simple-high text-accentblue mr-1"></i> Quá Bán (RSI &lt;= 30)</button>
+                        <button onclick="filterScreener('overbought')" id="btn-filter-overbought" class="filter-btn text-xs font-semibold px-4 py-2 rounded-xl border border-bordergray text-textmuted transition-all"><i class="fa-solid fa-gauge-simple-high text-accentred mr-1"></i> Quá Mua (RSI &gt;= 70)</button>
+                        <button onclick="filterScreener('fvg')" id="btn-filter-fvg" class="filter-btn text-xs font-semibold px-4 py-2 rounded-xl border border-bordergray text-textmuted transition-all"><i class="fa-solid fa-bolt text-yellow-400 mr-1"></i> Có FVG</button>
+                    </div>
+                </div>
+
+                <!-- Screener Table Container -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-bordergray text-textmuted text-xs font-bold uppercase tracking-wider">
+                                <th class="pb-3 px-4">Mã CK</th>
+                                <th class="pb-3 px-4">Tên Doanh Nghiệp</th>
+                                <th class="pb-3 px-4 text-right">Thị Giá (đ)</th>
+                                <th class="pb-3 px-4 text-right">Thay Đổi</th>
+                                <th class="pb-3 px-4 text-center">RSI (14)</th>
+                                <th class="pb-3 px-4 text-center">MA20 / MA50</th>
+                                <th class="pb-3 px-4 text-center">Tín Hiệu FVG</th>
+                                <th class="pb-3 px-4 text-center">Xu hướng</th>
+                                <th class="pb-3 px-4 text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="screener-table-body" class="text-sm font-semibold divide-y divide-bordergray">
+                            <!-- Dynamic Screener Table Rows -->
+                            <tr>
+                                <td colspan="9" class="py-10 text-center text-textmuted">
+                                    <div class="w-6 h-6 border-2 border-accentblue border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                                    Đang tải dữ liệu bộ lọc cổ phiếu...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: AI AGENT ================= -->
+        <section id="content-aiagent" class="tab-content hidden h-[calc(100vh-140px)] min-h-[500px]">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+                <!-- Left panel: Suggested Questions -->
+                <div class="lg:col-span-1 bg-darkcard border border-bordergray rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-accentblue/20 text-accentblue flex items-center justify-center">
+                                <i class="fa-solid fa-lightbulb"></i>
+                            </div>
+                            <h3 class="text-sm font-bold text-white">Gợi Ý Câu Hỏi</h3>
+                        </div>
+                        <p class="text-xs text-textmuted">Hỏi AI Agent của chúng tôi về phân tích kỹ thuật hoặc nhận định cổ phiếu nhanh.</p>
+                        <div class="space-y-2 mt-4" id="suggested-questions">
+                            <button onclick="askAI('Có khoảng trống giá FVG nào xuất hiện trên biểu đồ FPT gần đây không?')" class="w-full text-left text-xs bg-darkitem hover:bg-darkitem/80 border border-bordergray rounded-xl p-3 text-textlight hover:text-white transition-all">
+                                "Có khoảng trống FVG nào xuất hiện trên biểu đồ FPT gần đây không?"
+                            </button>
+                            <button onclick="askAI('Hãy phân tích mã cổ phiếu HPG, xu hướng MA và RSI hiện tại thế nào?')" class="w-full text-left text-xs bg-darkitem hover:bg-darkitem/80 border border-bordergray rounded-xl p-3 text-textlight hover:text-white transition-all">
+                                "Hãy phân tích mã cổ phiếu HPG, xu hướng MA và RSI hiện tại thế nào?"
+                            </button>
+                            <button onclick="askAI('Lọc các mã cổ phiếu đang ở vùng quá bán RSI (Oversold)?')" class="w-full text-left text-xs bg-darkitem hover:bg-darkitem/80 border border-bordergray rounded-xl p-3 text-textlight hover:text-white transition-all">
+                                "Lọc các mã cổ phiếu đang ở vùng quá bán RSI (Oversold)?"
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Disclaimer Card -->
+                    <div class="bg-darkitem/50 border border-bordergray/50 rounded-xl p-3 mt-4 text-[10px] text-textmuted">
+                        <i class="fa-solid fa-circle-info text-accentblue mr-1"></i> Khuyến nghị của AI Agent chỉ nhằm mục đích tham khảo và không được coi là lời khuyên đầu tư tài chính chính thức.
+                    </div>
+                </div>
+
+                <!-- Chat Box Area -->
+                <div class="lg:col-span-3 bg-darkcard border border-bordergray rounded-2xl flex flex-col overflow-hidden h-full">
+                    <!-- Chat Header -->
+                    <div class="border-b border-bordergray bg-darkcard px-6 py-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accentblue to-purple-600 flex items-center justify-center text-white shadow-md shadow-accentblue/10">
+                            <i class="fa-solid fa-robot text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">VNStock AI Agent</h3>
+                            <p class="text-xs text-accentgreen font-medium">Trợ lý phân tích kỹ thuật ảo • Trực tuyến</p>
+                        </div>
+                    </div>
+
+                    <!-- Message Feed -->
+                    <div id="chat-messages" class="flex-grow p-6 overflow-y-auto space-y-4 bg-darkbg/40">
+                        <!-- Bot Greeting Message -->
+                        <div class="flex items-start gap-3 max-w-[85%] animate-fade-in">
+                            <div class="w-8 h-8 rounded-lg bg-accentblue flex items-center justify-center text-white flex-shrink-0 text-xs">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div class="bg-darkitem border border-bordergray rounded-2xl rounded-tl-none p-4 text-sm leading-relaxed text-textlight shadow-sm">
+                                Xin chào! Tôi là trợ lý AI chuyên tích hợp phân tích kỹ thuật chứng khoán Việt Nam. 
+                                <br><br>
+                                Bạn có thể hỏi tôi về các chỉ số VNINDEX, tín hiệu RSI, xu hướng cắt nhau của đường MA, hoặc các điểm FVG (Fair Value Gaps) của bất kỳ mã cổ phiếu nào trong danh sách.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input Form -->
+                    <form id="chat-form" onsubmit="handleChatSubmit(event)" class="p-4 border-t border-bordergray bg-darkcard/90 flex gap-3">
+                        <input type="text" id="chat-input" placeholder="Hỏi AI Agent về cổ phiếu..." class="flex-grow bg-darkitem border border-bordergray rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-accentblue transition-all" required autocomplete="off">
+                        <button type="submit" class="bg-accentblue hover:bg-accentblue/90 text-white rounded-xl px-5 py-3 text-sm font-semibold transition-all flex items-center gap-2">
+                            <span>Gửi</span>
+                            <i class="fa-solid fa-paper-plane text-xs"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-bordergray bg-darkcard py-4 px-6 text-center text-xs text-textmuted mt-auto">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <div>
+                © 2026 VNStock Analytics Project. Phát triển phục vụ mục đích phân tích kỹ thuật.
+            </div>
+            <div class="flex gap-4">
+                <a href="#" class="hover:text-white transition-all">Điều khoản sử dụng</a>
+                <a href="#" class="hover:text-white transition-all">Liên hệ hỗ trợ</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main JavaScript Logic -->
+    <script src="app.js?v=9"></script>
+</body>
+</html>

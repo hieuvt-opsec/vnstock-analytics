@@ -1,0 +1,111 @@
+/* Custom Scrollbar for Dark Theme */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #080B10;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #232936;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #2F80ED;
+}
+
+/* Base Styles */
+body {
+    background-color: #080B10;
+    color: #EAECEF;
+    font-family: 'Outfit', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Tab Button Styles */
+.tab-btn {
+    color: #848E9C;
+    background: transparent;
+}
+
+.tab-btn:hover {
+    color: #EAECEF;
+    background-color: rgba(35, 41, 54, 0.4);
+}
+
+.tab-btn.active {
+    color: #FFFFFF;
+    background-color: #1E2330;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(47, 128, 237, 0.2);
+}
+
+/* Filter Button Styles */
+.filter-btn {
+    background-color: #11151F;
+    border-color: #232936;
+    color: #848E9C;
+}
+
+.filter-btn:hover {
+    color: #EAECEF;
+    border-color: #2F80ED;
+}
+
+.filter-btn.active {
+    background-color: rgba(47, 128, 237, 0.15);
+    border-color: #2F80ED;
+    color: #FFFFFF;
+}
+
+/* Chart Container & Layout */
+#chart-container {
+    height: 420px;
+    width: 100%;
+}
+
+/* Glassmorphism Cards */
+.glass-card {
+    background: rgba(17, 21, 31, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(35, 41, 54, 0.5);
+}
+
+/* Custom styles for chat messages styling */
+.user-msg-bubble {
+    background-color: #2F80ED;
+    color: #FFFFFF;
+    border-radius: 1rem 1rem 0 1rem;
+}
+
+/* Table Row Hover effect */
+tbody tr {
+    transition: all 0.2s ease-in-out;
+}
+
+tbody tr:hover {
+    background-color: rgba(30, 35, 48, 0.4);
+}
+
+/* Utility layout helper classes */
+.hidden {
+    display: none !important;
+}
+
+.block {
+    display: block !important;
+}

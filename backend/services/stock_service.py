@@ -103,9 +103,11 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     for col in ['open', 'high', 'low', 'close', 'volume']:
         df[col] = df[col].astype(float)
         
-    # Moving Averages
+    # Moving Averages & EMAs
     df['ma20'] = df['close'].rolling(window=20).mean()
     df['ma50'] = df['close'].rolling(window=50).mean()
+    df['ema34'] = df['close'].ewm(span=34, adjust=False).mean()
+    df['ema89'] = df['close'].ewm(span=89, adjust=False).mean()
     
     # RSI (14)
     delta = df['close'].diff()
@@ -760,25 +762,39 @@ def get_stock_full_analysis(symbol: str) -> dict:
             
             match_p = row.get('match_match_price')
             ref_p = row.get('match_reference_price')
+            ceil_p = row.get('match_ceiling_price') or row.get('listing_ceiling')
+            floor_p = row.get('match_floor_price') or row.get('listing_floor')
             
             price = float(match_p) if match_p is not None else 0.0
             ref = float(ref_p) if ref_p is not None else 0.0
+            ceiling = float(ceil_p) if ceil_p is not None else 0.0
+            floor = float(floor_p) if floor_p is not None else 0.0
+            
             if price <= 0:
                 price = ref
             change_percent = round(((price - ref) / ref) * 100, 2) if ref > 0 else 0.0
         else:
             price = POPULAR_STOCKS.get(symbol, {}).get("base_price", 0.0)
             change_percent = 0.0
+            ref = price
+            ceiling = round(price * 1.07)
+            floor = round(price * 0.93)
     except (Exception, SystemExit) as e:
         print(f"Error fetching real-time price for {symbol}: {e}")
         price = POPULAR_STOCKS.get(symbol, {}).get("base_price", 0.0)
         change_percent = 0.0
+        ref = price
+        ceiling = round(price * 1.07)
+        floor = round(price * 0.93)
 
     return {
         "symbol": symbol,
         "company_name": company_name,
         "price": price,
         "change_percent": change_percent,
+        "ref_price": ref,
+        "ceiling_price": ceiling,
+        "floor_price": floor,
         "history": get_stock_history_internal(symbol),
         "fundamentals": get_stock_fundamental_internal(symbol),
         "shareholders": get_shareholders_internal(symbol),

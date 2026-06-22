@@ -147,7 +147,7 @@ function initChart() {
             background: { type: 'solid', color: '#11151F' }, // Matching card dark color
             textColor: '#848E9C',
             fontSize: 12,
-            fontFamily: 'Outfit, sans-serif'
+            fontFamily: 'Inter, sans-serif'
         },
         grid: {
             vertLines: { color: 'rgba(35, 41, 54, 0.4)' },
@@ -339,6 +339,12 @@ async function loadStockData(symbol) {
         // Update company name dynamically from API payload using innerText to prevent XSS and fix UI bug
         chartCompanyEl.innerText = result.company_name || getCompanyName(symbol);
 
+        // Update Chi tiết AI link in chart header dynamically
+        const detailBtn = document.getElementById('view-detail-btn');
+        if (detailBtn) {
+            detailBtn.href = `detail.html?ticker=${symbol}`;
+        }
+
         // Update price display if you have one... (optional, not strictly in instruction but good for sync)
 
         // Render sub-components
@@ -522,9 +528,14 @@ function renderScreenerTable(data) {
             <td class="py-4 px-4 text-center">${fvgBadge}</td>
             <td class="py-4 px-4 text-center text-sm font-semibold">${trendBadge}</td>
             <td class="py-4 px-4 text-center">
-                <button onclick="selectStock('${item.symbol}')" class="text-accentblue hover:text-white border border-accentblue/30 hover:bg-accentblue text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all">
-                    Xem biểu đồ
-                </button>
+                <div class="flex items-center justify-center gap-1.5">
+                    <button onclick="selectStock('${item.symbol}')" class="text-accentblue hover:text-white border border-accentblue/30 hover:bg-accentblue text-xs font-semibold px-2 py-1.5 rounded-lg transition-all">
+                        Biểu đồ
+                    </button>
+                    <a href="detail.html?ticker=${item.symbol}" class="text-textmuted hover:text-white border border-bordergray hover:bg-darkitem text-xs font-semibold px-2 py-1.5 rounded-lg transition-all">
+                        Chi tiết
+                    </a>
+                </div>
             </td>
         `;
         screenerTableBody.appendChild(tr);
@@ -1232,7 +1243,7 @@ function renderForeignFlowChart(data) {
                         ticks: {
                             color: '#848E9C',
                             font: {
-                                family: 'Outfit, sans-serif',
+                                family: 'Inter, sans-serif',
                                 size: 10
                             }
                         }
@@ -1245,7 +1256,7 @@ function renderForeignFlowChart(data) {
                         ticks: {
                             color: '#848E9C',
                             font: {
-                                family: 'Outfit, sans-serif',
+                                family: 'Inter, sans-serif',
                                 size: 10
                             },
                             callback: function (value) {
@@ -1393,3 +1404,16 @@ function getMockShareholders(symbol) {
         { name: 'Quỹ Đầu Tư SSIAM', shares: 5000000, percentage: 2.25 }
     ];
 }
+
+// Redirection handler for detail page from search input
+function viewDetailFromSearch() {
+    const input = document.getElementById('stock-search-input');
+    if (!input) return;
+    const symbol = input.value.trim().toUpperCase();
+    if (symbol.length >= 3 && symbol.length <= 5) {
+        window.location.href = `detail.html?ticker=${symbol}`;
+    } else {
+        alert('Mã cổ phiếu không hợp lệ. Vui lòng nhập từ 3 đến 5 ký tự.');
+    }
+}
+

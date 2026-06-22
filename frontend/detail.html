@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNStock Analytics — Chi Tiết Cổ Phiếu</title>
+    <meta name="description" content="Dashboard phân tích chi tiết cổ phiếu Việt Nam — Dữ liệu tài chính, chỉ số kỹ thuật, định giá thời gian thực.">
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS (includes Inter font import) -->
+    <link rel="stylesheet" href="style.css?v=2.3">
+
+    <!-- Error Debugger -->
+    <script>
+        window.addEventListener('error', function(e) {
+            const div = document.createElement('div');
+            div.style.cssText = 'position:fixed;bottom:0;left:0;width:100%;background:rgba(239,68,68,0.95);color:#fff;padding:12px;z-index:999999;font-family:monospace;font-size:12px;border-top:2px solid #fff;word-break:break-all';
+            div.innerHTML = '<b>[JS ERROR]</b> ' + e.message + ' <br><em>at ' + e.filename + ':' + e.lineno + '</em>';
+            document.body.appendChild(div);
+        });
+    </script>
+</head>
+<body style="min-height:100vh;display:flex;flex-direction:column;">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+            <div class="spinner"></div>
+            <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">Đang tải dữ liệu cổ phiếu...</span>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="detail-header">
+        <div class="navbar" style="max-width:1600px;margin:0 auto;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <a href="index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="background:linear-gradient(135deg, var(--accent-green), var(--accent-blue));width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 14px rgba(0,192,135,0.15);">
+                        <i class="fa-solid fa-chart-line" style="font-size:16px;"></i>
+                    </div>
+                    <div>
+                        <h1 style="font-size:18px;font-weight:700;color:#fff;margin:0;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">
+                            VNSTOCK <span class="badge badge-exchange" style="font-size:9px;background:rgba(0,192,135,0.15);color:var(--accent-green);border:1px solid rgba(0,192,135,0.25);">DETAIL</span>
+                        </h1>
+                        <p style="font-size:11px;color:var(--text-secondary);margin:0;">Bảng dữ liệu chi tiết theo mã cổ phiếu</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Search -->
+            <div class="search-container" id="search-bar">
+                <input type="text" id="quick-search-input" placeholder="Nhập mã cổ phiếu...">
+                <button onclick="quickSearch()" id="btn-search">Xem</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="detail-grid" style="flex-grow:1;">
+
+        <!-- ========================================
+             BLOCK 1: OVERVIEW BANNER
+             ======================================== -->
+        <!-- ========================================
+             BLOCK 1: OVERVIEW BANNER (PREMIUM)
+             ======================================== -->
+        <div class="card overview-card animate-fade-in" style="animation-delay:0.05s;">
+            <div class="card-glow" style="background:var(--accent-blue);right:-80px;top:-80px;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;z-index:2;flex-wrap:wrap;">
+                <!-- Left: Identity -->
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <!-- Prominent Ticker Title and Badges Row -->
+                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <span id="stock-symbol" class="ticker-title">---</span>
+                        <span class="badge badge-exchange" style="font-weight:600;text-transform:uppercase;font-size:10px;padding:4px 10px;background:rgba(255,255,255,0.08);color:#fff;margin-top:2px;">
+                            <span id="stock-exchange">---</span> · <span id="stock-sector">---</span>
+                        </span>
+                        <span class="badge" style="background:rgba(47,128,237,0.1);color:var(--accent-blue);border:1px solid rgba(47,128,237,0.2);font-weight:600;text-transform:uppercase;font-size:10px;padding:4px 10px;margin-top:2px;">Cập nhật FY2025</span>
+                    </div>
+                    <!-- Corporate Name and Description below it -->
+                    <h2 id="stock-company-name" style="font-size:15px;font-weight:600;color:var(--text-secondary);margin:4px 0 2px;text-transform:uppercase;letter-spacing:0.02em;">Đang tải...</h2>
+                    <p id="stock-description" style="font-size:11px;color:var(--text-muted);margin:0;font-weight:500;">Dữ liệu phân tích và báo cáo tài chính chi tiết doanh nghiệp</p>
+                </div>
+                <!-- Right: Price & Capitalization -->
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right;">
+                    <div style="display:flex;align-items:flex-start;justify-content:flex-end;gap:2px;">
+                        <span id="stock-price-unit" style="font-size:16px;font-weight:700;margin-top:4px;line-height:1;">đ</span>
+                        <span id="stock-price" style="font-size:40px;font-weight:800;letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums;">---</span>
+                        <span style="font-size:14px;font-weight:500;color:var(--text-secondary);align-self:flex-end;margin-bottom:4px;margin-left:2px;">/cp</span>
+                        <span id="stock-change" style="font-size:15px;font-weight:700;align-self:flex-end;margin-bottom:4px;margin-left:10px;">---</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);font-weight:500;margin-top:4px;">
+                        <span style="width:6px;height:6px;border-radius:50%;background-color:var(--accent-green);display:inline-block;"></span>
+                        <span id="stock-market-cap">---</span>
+                    </div>
+                    <div class="trading-volume-line">
+                        <span class="dot-icon" style="color: #8a8a8f;">•</span> 
+                        KLGD: <span id="trading-volume-value" style="font-weight:700;color:#fff;">0</span> CP
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metric Cards Grid -->
+            <div class="metrics-grid">
+                <!-- P/E -->
+                <div class="metric-box">
+                    <div class="metric-box-title">P/E</div>
+                    <div class="metric-box-value" id="metric-pe">---</div>
+                    <div class="metric-box-desc" id="metric-pe-desc">---</div>
+                </div>
+                <!-- P/B -->
+                <div class="metric-box">
+                    <div class="metric-box-title">P/B</div>
+                    <div class="metric-box-value" id="metric-pb">---</div>
+                    <div class="metric-box-desc" id="metric-pb-desc">---</div>
+                </div>
+                <!-- ROE 2025 -->
+                <div class="metric-box">
+                    <div class="metric-box-title">ROE 2025</div>
+                    <div class="metric-box-value" id="metric-roe">---</div>
+                    <div class="metric-box-desc" id="metric-roe-desc">---</div>
+                </div>
+                <!-- BVPS 2025 -->
+                <div class="metric-box">
+                    <div class="metric-box-title">BVPS 2025</div>
+                    <div class="metric-box-value" id="metric-bvps">---</div>
+                    <div class="metric-box-desc" id="metric-bvps-desc">---</div>
+                </div>
+                <!-- LNST 2025 -->
+                <div class="metric-box">
+                    <div class="metric-box-title">LNST 2025</div>
+                    <div class="metric-box-value" id="metric-lnst">---</div>
+                    <div class="metric-box-desc" id="metric-lnst-desc">---</div>
+                </div>
+                <!-- SẢN LƯỢNG -->
+                <div class="metric-box">
+                    <div class="metric-box-title">SẢN LƯỢNG</div>
+                    <div class="metric-box-value" id="metric-volume">---</div>
+                    <div class="metric-box-desc" id="metric-volume-desc">---</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================
+             BLOCK 2: FINANCIAL TABLE (5 YEARS)
+             ======================================== -->
+        <div class="card block-financials animate-fade-in" style="animation-delay:0.15s;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg, var(--accent-purple), var(--accent-blue));display:flex;align-items:center;justify-content:center;color:#fff;">
+                    <i class="fa-solid fa-chart-line" style="font-size:14px;"></i>
+                </div>
+                <div>
+                    <h2 style="font-size:15px;font-weight:700;color:#fff;margin:0;text-transform:uppercase;letter-spacing:0.02em;">Kết quả kinh doanh</h2>
+                    <p style="font-size:11px;color:var(--accent-purple);font-weight:500;margin:0;">Báo cáo tài chính tổng hợp các năm gần nhất</p>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="fin-table" id="financial-table">
+                    <thead>
+                        <tr>
+                            <th>Năm</th>
+                            <th>Doanh thu (tỷ)</th>
+                            <th>LNST (tỷ)</th>
+                            <th>Tổng TS (tỷ)</th>
+                            <th>VCSH (tỷ)</th>
+                            <th>Tăng trưởng DT</th>
+                            <th>Tăng trưởng LN</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financial-table-body">
+                        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:32px;">Đang tải dữ liệu...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-glow" style="background:var(--accent-purple);left:-100px;bottom:-100px;"></div>
+        </div>
+
+        <!-- ========================================
+             BLOCK 3: TECHNICAL ANALYSIS PANEL
+             ======================================== -->
+        <div class="card block-technical animate-fade-in" style="animation-delay:0.25s;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg, var(--accent-green), #0ea5e9);display:flex;align-items:center;justify-content:center;color:#fff;">
+                        <i class="fa-solid fa-flask" style="font-size:14px;"></i>
+                    </div>
+                    <div>
+                        <h2 style="font-size:15px;font-weight:700;color:#fff;margin:0;text-transform:uppercase;letter-spacing:0.02em;">Phân tích kỹ thuật</h2>
+                        <p style="font-size:11px;color:var(--accent-green);font-weight:500;margin:0;">Điểm số dựa trên MA · RSI · Vị trí giá</p>
+                    </div>
+                </div>
+                <!-- Overall Signal Badge -->
+                <div id="tech-overall-signal" class="badge" style="font-size:11px;padding:5px 14px;">---</div>
+            </div>
+
+            <!-- Score Ring + Indicators Grid -->
+            <div class="tech-layout-grid" id="tech-layout">
+                <!-- Score Ring wrapped in a card box -->
+                <div class="tech-score-card" id="tech-score-section">
+                    <div class="tech-gauge">
+                        <div class="tech-score-ring" id="tech-score-ring">
+                            <svg width="120" height="120" viewBox="0 0 120 120">
+                                <circle cx="60" cy="60" r="54" fill="none" stroke="var(--border-color)" stroke-width="6"/>
+                                <circle id="tech-score-arc" cx="60" cy="60" r="54" fill="none" stroke="var(--accent-blue)" stroke-width="6" stroke-linecap="round"
+                                        stroke-dasharray="339.29" stroke-dashoffset="339.29" style="transition:stroke-dashoffset 1s ease-out,stroke 0.5s ease;"/>
+                            </svg>
+                            <span class="tech-score-value" id="tech-score-value">--</span>
+                        </div>
+                        <span style="font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-top:8px;">Technical Score</span>
+                    </div>
+
+                    <!-- Score Breakdown mini -->
+                    <div style="display:flex;flex-direction:column;gap:8px;min-width:200px;flex-grow:1;" id="tech-breakdown">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Indicator Items -->
+                <div class="technical-metrics-grid" id="tech-indicators">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+            <div class="card-glow" style="background:var(--accent-green);right:-100px;top:-80px;"></div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="detail-footer">
+        <div style="max-width:1600px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;">
+            <div>© 2026 VNStock Analytics — Bảng dữ liệu phân tích cổ phiếu Việt Nam.</div>
+            <div style="display:flex;gap:16px;">
+                <a href="index.html"><i class="fa-solid fa-home" style="margin-right:4px;"></i>Trang chủ</a>
+                <a href="#">Điều khoản</a>
+                <a href="#">Liên hệ</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Detail JS -->
+    <script src="detail.js"></script>
+</body>
+</html>

@@ -78,22 +78,12 @@ function switchTab(tabId) {
     }
 }
 
-// Helper for fetch with timeout
+// Helper for fetch with timeout (timeout disabled to prevent AbortError on Render)
 async function fetchWithTimeout(resource, options = {}) {
-    const { timeout = 15000 } = options;
-
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-
     try {
-        const response = await fetch(resource, {
-            ...options,
-            signal: controller.signal
-        });
-        clearTimeout(id);
+        const response = await fetch(resource, options);
         return response;
     } catch (error) {
-        clearTimeout(id);
         throw error;
     }
 }
